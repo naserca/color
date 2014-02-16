@@ -1,25 +1,51 @@
-var $body = document.body,
-    bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, ''),
-    bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, ''),
-    middleX = bodyWidth / 2,
-    middleY = bodyHeight / 2,
-    maxRadius = middleX;
+var $body, bodyWidth, bodyHeight, middleX, middleY,
+    shortestSideLength, longestSideLength, maxRadius,
+    $circle, $main;
 
-var getPageMultiplier = function(pagePos, windowLength) {
-  return pagePos / windowLength
+$body = document.body,
+bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, ''),
+bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, ''),
+middleX = bodyWidth / 2,
+middleY = bodyHeight / 2;
+
+isLandscape = (bodyWidth - bodyHeight >= 0);
+shortestSideLength = bodyWidth.isLongest ? bodyHeight : bodyWidth;
+
+maxRadius = shortestSideLength / 2;
+
+$circle = document.getElementById('circle');
+$main = document.getElementById('main');
+
+if (isLandscape)
+  $circle.style.width = bodyHeight + "px";
+else
+  topOffset = bodyHeight / 2 - bodyWidth / 2;
+  $circle.style.top = topOffset + "px";
+  $circle.style.height = bodyWidth + "px";
+  
+
+  
+function getRadius(pageX, pageY) {
+  return Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
+}
+
+function isWithinCircle(radius) {
+  return radius <= maxRadius;
 }
 
 var getH = function(pageX, pageY) {
   var referenceX = middleX,
-      referenceY = middleY - Math.sqrt(Math.abs(pageX - middleX) * Math.abs(pageX - middleX) + Math.abs(pageY - middleY) * Math.abs(pageY - middleY));
+      referenceY = middleY - getRadius(pageX, pageY);
 
   var degrees = (2 * Math.atan2(pageY - referenceY, pageX - referenceX)) * 180 / Math.PI;
   return degrees / 360;
 }
 
-var getS = function(pageX, pageY) {
-  var radius = Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
-  return radius / maxRadius;
+var getS = function(radius) {
+  if (isWithinCircle(radius))
+    return radius / maxRadius;
+  else
+    return 1;
 }
 
 function HSVtoRGB(hsv) {
@@ -53,11 +79,12 @@ if (Modernizr.touch) {
   Hammer($body).on("drag", function(ev) {
     var pageX = ev.gesture.center.pageX,
         pageY = ev.gesture.center.pageY,
-        multZ = 1;
+        multZ = 1,
+        radius = getRadius(pageX, pageY);
 
     var hsv = {
       h: getH(pageX, pageY),
-      s: getS(pageX, pageY),
+      s: getS(radius),
       v: multZ
     };
 
