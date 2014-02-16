@@ -1,29 +1,43 @@
+Canvas = (function() {
+  function Canvas(elem, width, height) {
+    this.elem = elem;
+    this.width = width;
+    this.height = height;
+    this.ctx = this.elem.getContext('2d');
+    this.color = "black";
+  }
+
+  Canvas.prototype.draw = function() {
+    this.ctx.fillStyle = this.color;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+  };
+
+  Canvas.prototype.clear = function() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+  }
+
+  return Canvas;
+
+})();
+
 var $body, bodyWidth, bodyHeight, middleX, middleY,
     shortestSideLength, longestSideLength, maxRadius,
-    $circle, $main;
+    $canvas;
 
-$body = document.body,
-bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, ''),
-bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, ''),
-middleX = bodyWidth / 2,
+$body = document.body;
+$canvas = document.getElementById('canvas');
+bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, '');
+bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, '');
+middleX = bodyWidth / 2;
 middleY = bodyHeight / 2;
 
 isLandscape = (bodyWidth - bodyHeight >= 0);
-shortestSideLength = bodyWidth.isLongest ? bodyHeight : bodyWidth;
-
+shortestSideLength = isLandscape ? bodyHeight : bodyWidth;
 maxRadius = shortestSideLength / 2;
 
-$circle = document.getElementById('circle');
-$main = document.getElementById('main');
-
-if (isLandscape)
-  $circle.style.width = bodyHeight + "px";
-else
-  topOffset = bodyHeight / 2 - bodyWidth / 2;
-  $circle.style.top = topOffset + "px";
-  $circle.style.height = bodyWidth + "px";
-  
-
+$canvas.style.width = bodyWidth + "px";
+$canvas.style.height = bodyHeight + "px";
+ctx = $canvas.getContext('2d');
   
 function getRadius(pageX, pageY) {
   return Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
@@ -33,7 +47,7 @@ function isWithinCircle(radius) {
   return radius <= maxRadius;
 }
 
-var getH = function(pageX, pageY) {
+function getH(pageX, pageY) {
   var referenceX = middleX,
       referenceY = middleY - getRadius(pageX, pageY);
 
@@ -41,11 +55,15 @@ var getH = function(pageX, pageY) {
   return degrees / 360;
 }
 
-var getS = function(radius) {
+function getS(radius) {
   if (isWithinCircle(radius))
     return radius / maxRadius;
   else
     return 1;
+}
+
+function getV() {
+
 }
 
 function HSVtoRGB(hsv) {
@@ -74,24 +92,51 @@ function HSVtoRGB(hsv) {
   };
 }
 
-if (Modernizr.touch) {
-} else {
-  Hammer($body).on("drag", function(ev) {
-    var pageX = ev.gesture.center.pageX,
-        pageY = ev.gesture.center.pageY,
-        multZ = 1,
-        radius = getRadius(pageX, pageY);
+function animate(canvas) {
+  canvas.draw(canvas.color);
 
-    var hsv = {
-      h: getH(pageX, pageY),
-      s: getS(radius),
-      v: multZ
-    };
-
-    var rgb = (HSVtoRGB(hsv));
-
-    $body.style.backgroundColor = "rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
-
+  var animationId = window.requestAnimationFrame(function(){
+    animate(canvas)
   });
 
+  animationIds.push(animationId);
 }
+
+var animationIds = [];
+
+var canvas = new Canvas($canvas, bodyWidth, bodyHeight);
+
+Hammer($body).on("drag", function(ev) {
+  var pageX = ev.gesture.center.pageX,
+      pageY = ev.gesture.center.pageY,
+      multZ = 1,
+      radius = getRadius(pageX, pageY);
+
+  var hsv = {
+    h: getH(pageX, pageY),
+    s: getS(radius),
+    v: multZ
+  };
+
+  var rgb = (HSVtoRGB(hsv));
+  var color = "rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
+  
+  canvas.color = color;
+});
+
+Hammer($body).on("touch", function(ev) {
+  ev.gesture.preventDefault();
+
+  var animationId = window.requestAnimationFrame(function(){
+    animate(canvas)
+  });
+
+  animationIds.push(animationId);
+});
+
+Hammer($body).on("release", function(ev) {
+  for (var i = 0; i < animationIds.length; i++) {
+    animationId = animationIds[i];
+    window.cancelAnimationFrame(animationId);
+  }
+});
