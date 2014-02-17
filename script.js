@@ -165,7 +165,7 @@ canvas.color = color;
 
 canvas.resize();
 
-Hammer($body).on("drag", function(ev) {
+Hammer($canvas).on("drag", function(ev) {
   if (!pinching) {
     var pageX = ev.gesture.center.pageX,
         pageY = ev.gesture.center.pageY,
@@ -180,7 +180,7 @@ Hammer($body).on("drag", function(ev) {
 var pinching = false,
     currentPinch = undefined;
 
-Hammer($body).on("pinch", function(ev) {
+Hammer($canvas).on("pinch", function(ev) {
   var middleX = ev.gesture.center.pageX,
       middleY = ev.gesture.center.pageY,
       pageX   = ev.gesture.touches[0].pageX,
@@ -204,16 +204,7 @@ Hammer($body).on("pinch", function(ev) {
   canvas.color.convertToRgb();
 });
 
-// animation handling
-
-Hammer($body).on("dragstart", function(ev) {
-  ev.gesture.preventDefault();
-  var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
-  animationIds.push(animationId);
-  started = true;
-});
-
-Hammer($body).on("touch", function(ev) {
+Hammer($canvas).on("tap", function(ev) {
   ev.gesture.preventDefault();
   if (started) {
     var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
@@ -223,7 +214,26 @@ Hammer($body).on("touch", function(ev) {
   }
 });
 
-Hammer($body).on("release", function(ev) {
+// animation handling
+
+Hammer($canvas).on("dragstart", function(ev) {
+  ev.gesture.preventDefault();
+  var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+  animationIds.push(animationId);
+  started = true;
+});
+
+Hammer($canvas).on("touch", function(ev) {
+  ev.gesture.preventDefault();
+  if (started) {
+    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+    animationIds.push(animationId);
+  } else {
+    if (ev.gesture.touches.length > 1) ev.gesture.stopDetect();
+  }
+});
+
+Hammer($canvas).on("release", function(ev) {
   for (var i = 0; i < animationIds.length; i++) {
     animationId = animationIds[i];
     window.cancelAnimationFrame(animationId);
