@@ -83,6 +83,40 @@ Color.prototype.convertToRgb = function() {
   };
 }
 
+// pinch
+
+function Pinch(args) {
+  this.maxDistance = 200;
+  this.distance = this.getDistance(args.pageX, args.pageY, args.middleX, args.middleY);
+}
+
+Pinch.prototype.getDistance = function(pageX, pageY, middleX, middleY) {
+  return Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
+}
+
+Pinch.prototype.getDiffMultiplier = function(pageX, pageY, middleX, middleY) {
+  this.setNewDistance(pageX, pageY, middleX, middleY);
+  this.setDistanceDiff()
+  return this.difference / this.maxDistance;
+}
+
+Pinch.prototype.resetDifference = function() {
+  this.distance = this.newDistance;
+}
+
+Pinch.prototype.setNewDistance = function(pageX, pageY, middleX, middleY) {
+  this.newDistance = this.getDistance(pageX, pageY, middleX, middleY);
+}
+
+Pinch.prototype.setDistanceDiff = function() {
+  this.difference = this.distance - this.newDistance;
+}
+
+Pinch.prototype.setMiddles = function(middleX, middleY) {
+  this.middleX = middleX;
+  this.middleY = middleY;
+}
+
 // runner
 
 var $body, bodyWidth, bodyHeight, middleX, middleY,
@@ -117,6 +151,7 @@ function animate(canvas) {
 }
 
 var animationIds = [];
+var started = false;
 
 var canvas, color, args;
 
@@ -140,41 +175,6 @@ Hammer($body).on("drag", function(ev) {
     canvas.color.convertToRgb();
   }
 });
-
-// pinch
-
-function Pinch(args) {
-  this.maxDistance = 200;
-  this.distance = this.getDistance(args.pageX, args.pageY, args.middleX, args.middleY);
-}
-
-Pinch.prototype.getDistance = function(pageX, pageY, middleX, middleY) {
-  return Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
-}
-
-Pinch.prototype.getDiffMultiplier = function(pageX, pageY, middleX, middleY) {
-  this.setMiddles(middleX, middleY);
-  this.newDistance = this.getDistance(pageX, pageY, middleX, middleY);
-  this.difference = this.distance - this.newDistance;
-  return this.difference / this.maxDistance;
-}
-
-Pinch.prototype.resetDifference = function() {
-  this.distance = this.newDistance;
-}
-
-Pinch.prototype.setDistance = function(pageX, pageY) {
-  this.distance = this.getDistance(pageX, pageY);
-}
-
-Pinch.prototype.getDistanceDiff = function(pageX, pageY) {
-  return this.distance - this.newDistance;
-}
-
-Pinch.prototype.setMiddles = function(middleX, middleY) {
-  this.middleX = middleX;
-  this.middleY = middleY;
-}
 
 var pinching = false,
     currentPinch = undefined;
@@ -205,10 +205,21 @@ Hammer($body).on("pinch", function(ev) {
 
 // animation handling
 
-Hammer($body).on("touch", function(ev) {
+Hammer($body).on("dragstart", function(ev) {
   ev.gesture.preventDefault();
   var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
   animationIds.push(animationId);
+  started = true;
+});
+
+Hammer($body).on("touch", function(ev) {
+  ev.gesture.preventDefault();
+  if (started) {
+    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+    animationIds.push(animationId);
+  } else {
+    if (ev.gesture.touches.length > 1) ev.gesture.stopDetect();
+  }
 });
 
 Hammer($body).on("release", function(ev) {
