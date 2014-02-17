@@ -11,8 +11,8 @@ Canvas.prototype.resize = function() {
   this.width = window.innerWidth - this.elem.offsetLeft;
   this.height = window.innerHeight - this.elem.offsetTop;
 
-  this.middleX = this.width / 2;
-  this.middleY = this.height / 2;
+  this.middleX = this.width / 2 + this.elem.offsetLeft;
+  this.middleY = this.height / 2 + this.elem.offsetTop;
 
   this.isLandscape = (this.width - this.height >= 0);
   this.shortestSideLength = this.isLandscape ? this.height : this.width;
@@ -98,6 +98,10 @@ Color.prototype.convertToRgb = function() {
     g: Math.floor(g * 255),
     b: Math.floor(b * 255)
   };
+}
+
+Color.prototype.hexString = function() {
+  return "#" + ((1 << 24) + (this.rgb.r << 16) + (this.rgb.g << 8) + this.rgb.b).toString(16).slice(1);
 }
 
 // pinch
@@ -207,10 +211,10 @@ Hammer($canvas).on("pinch", function(ev) {
 Hammer($canvas).on("tap", function(ev) {
   ev.gesture.preventDefault();
   if (started) {
-    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
-    animationIds.push(animationId);
-  } else {
-    if (ev.gesture.touches.length > 1) ev.gesture.stopDetect();
+    $canvas.insertAdjacentHTML('beforebegin',
+      "<div style='background-color:"+canvas.color.string()+";'><span>"+canvas.color.hexString()+"</span></div>"
+    );
+    canvas.resize()
   }
 });
 
