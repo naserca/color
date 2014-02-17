@@ -2,10 +2,16 @@ body {
   font-family: "Helvetica", Arial;
   font-weight: 300;
   margin: 0;
-  min-height: 100%;
   background-color: black;
 }
 
-#canvas {
-  position: absolute;
+/*#container {
+  display: table;
+  height: 100%;
+  width: 100%;
 }
+
+#canvas {
+  display:table-row;
+  height:100%;
+}*/

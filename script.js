@@ -42,8 +42,14 @@ Color.prototype.changeS = function(radius) {
   this.hsv.s = (isWithinCircle(radius)) ? radius / maxRadius : 1;
 }
 
-Color.prototype.changeV = function() {
-  // cool pinch shit
+Color.prototype.changeV = function(distanceDiff) {
+  var rawV = this.hsv.v - distanceDiff;
+  if (rawV > 1)
+    this.hsv.v = 1;
+  else if (rawV < 0)
+    this.hsv.v = 0;
+  else
+    this.hsv.v = rawV;
 }
 
 Color.prototype.string = function() {
@@ -77,6 +83,8 @@ Color.prototype.convertToRgb = function() {
   };
 }
 
+// runner
+
 var $body, bodyWidth, bodyHeight, middleX, middleY,
     shortestSideLength, longestSideLength, maxRadius,
     $canvas;
@@ -85,8 +93,6 @@ $body = document.body;
 $canvas = document.getElementById('canvas');
 bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, '');
 bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, '');
-middleX = bodyWidth / 2;
-middleY = bodyHeight / 2;
 
 isLandscape = (bodyWidth - bodyHeight >= 0);
 shortestSideLength = isLandscape ? bodyHeight : bodyWidth;
@@ -112,25 +118,92 @@ function animate(canvas) {
 
 var animationIds = [];
 
-var args = {
+var canvas, color, args;
+
+args = {
   elem: $canvas,
   width: bodyWidth,
   height: bodyHeight
 };
-
-var canvas = new Canvas(args);
-var color  = new Color(canvas);
+canvas       = new Canvas(args);
+color        = new Color(canvas);
 canvas.color = color;
 
 Hammer($body).on("drag", function(ev) {
-  var pageX = ev.gesture.center.pageX,
-      pageY = ev.gesture.center.pageY,
-      radius = canvas.getRadius(pageX, pageY);
+  if (!pinching) {
+    var pageX = ev.gesture.center.pageX,
+        pageY = ev.gesture.center.pageY,
+        radius = canvas.getRadius(pageX, pageY);
 
-  canvas.color.changeH(pageX, pageY);
-  canvas.color.changeS(radius);
+    canvas.color.changeH(pageX, pageY);
+    canvas.color.changeS(radius);
+    canvas.color.convertToRgb();
+  }
+});
+
+// pinch
+
+function Pinch(args) {
+  this.maxDistance = 200;
+  this.distance = this.getDistance(args.pageX, args.pageY, args.middleX, args.middleY);
+}
+
+Pinch.prototype.getDistance = function(pageX, pageY, middleX, middleY) {
+  return Math.sqrt(Math.pow(pageX - middleX, 2) + Math.pow(pageY - middleY, 2));
+}
+
+Pinch.prototype.getDiffMultiplier = function(pageX, pageY, middleX, middleY) {
+  this.setMiddles(middleX, middleY);
+  this.newDistance = this.getDistance(pageX, pageY, middleX, middleY);
+  this.difference = this.distance - this.newDistance;
+  return this.difference / this.maxDistance;
+}
+
+Pinch.prototype.resetDifference = function() {
+  this.distance = this.newDistance;
+}
+
+Pinch.prototype.setDistance = function(pageX, pageY) {
+  this.distance = this.getDistance(pageX, pageY);
+}
+
+Pinch.prototype.getDistanceDiff = function(pageX, pageY) {
+  return this.distance - this.newDistance;
+}
+
+Pinch.prototype.setMiddles = function(middleX, middleY) {
+  this.middleX = middleX;
+  this.middleY = middleY;
+}
+
+var pinching = false,
+    currentPinch = undefined;
+
+Hammer($body).on("pinch", function(ev) {
+  var middleX = ev.gesture.center.pageX,
+      middleY = ev.gesture.center.pageY,
+      pageX   = ev.gesture.touches[0].pageX,
+      pageY   = ev.gesture.touches[0].pageY;
+
+  if (!pinching) {
+    args = {
+      middleX: middleX,
+      middleY: middleY,
+      pageX: pageX,
+      pageY: pageY
+    };
+    currentPinch = new Pinch(args);
+    pinching = true;
+  }
+
+  var diffMultiplier = currentPinch.getDiffMultiplier(pageX, pageY, middleX, middleY);
+  currentPinch.resetDifference();
+
+  canvas.color.changeV(diffMultiplier);
   canvas.color.convertToRgb();
 });
+
+// animation handling
 
 Hammer($body).on("touch", function(ev) {
   ev.gesture.preventDefault();
@@ -143,4 +216,6 @@ Hammer($body).on("release", function(ev) {
     animationId = animationIds[i];
     window.cancelAnimationFrame(animationId);
   }
+
+  pinching = false;
 });
