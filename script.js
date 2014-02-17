@@ -3,11 +3,24 @@
 function Canvas(args) {
   this.elem = args.elem;
   this.ctx = this.elem.getContext('2d');
-  this.width = args.width;
-  this.height = args.height;
+  this.color = {};
+  this.resize();
+}
+
+Canvas.prototype.resize = function() {
+  this.width = window.innerWidth - this.elem.offsetLeft;
+  this.height = window.innerHeight - this.elem.offsetTop;
+
   this.middleX = this.width / 2;
   this.middleY = this.height / 2;
-  this.color = {};
+
+  this.isLandscape = (this.width - this.height >= 0);
+  this.shortestSideLength = this.isLandscape ? this.height : this.width;
+  this.maxRadius = this.shortestSideLength / 2;
+
+  $canvas.style.width = this.width + "px";
+  $canvas.style.height = this.height + "px";
+  this.ctx = this.elem.getContext('2d');
 }
 
 Canvas.prototype.draw = function() {
@@ -21,6 +34,10 @@ Canvas.prototype.clear = function() {
 
 Canvas.prototype.getRadius = function(pageX, pageY) {
   return Math.sqrt(Math.pow(pageX - this.middleX, 2) + Math.pow(pageY - this.middleY, 2));
+}
+
+Canvas.prototype.isWithinCircle = function(radius) {
+  return radius <= this.maxRadius;
 }
 
 // color
@@ -39,7 +56,7 @@ Color.prototype.changeH = function(pageX, pageY) {
 }
 
 Color.prototype.changeS = function(radius) {
-  this.hsv.s = (isWithinCircle(radius)) ? radius / maxRadius : 1;
+  this.hsv.s = (this.canvas.isWithinCircle(radius)) ? radius / this.canvas.maxRadius : 1;
 }
 
 Color.prototype.changeV = function(distanceDiff) {
@@ -119,26 +136,10 @@ Pinch.prototype.setMiddles = function(middleX, middleY) {
 
 // runner
 
-var $body, bodyWidth, bodyHeight, middleX, middleY,
-    shortestSideLength, longestSideLength, maxRadius,
-    $canvas;
+var $body, $canvas;
 
 $body = document.body;
 $canvas = document.getElementById('canvas');
-bodyWidth = getComputedStyle($body)['width'].replace(/\D/g, '');
-bodyHeight = getComputedStyle($body)['height'].replace(/\D/g, '');
-
-isLandscape = (bodyWidth - bodyHeight >= 0);
-shortestSideLength = isLandscape ? bodyHeight : bodyWidth;
-maxRadius = shortestSideLength / 2;
-
-$canvas.style.width = bodyWidth + "px";
-$canvas.style.height = bodyHeight + "px";
-ctx = $canvas.getContext('2d');
-
-function isWithinCircle(radius) {
-  return radius <= maxRadius;
-}
 
 function animate(canvas) {
   canvas.draw(canvas.color);
@@ -151,18 +152,18 @@ function animate(canvas) {
 }
 
 var animationIds = [];
+
 var started = false;
 
 var canvas, color, args;
-
 args = {
-  elem: $canvas,
-  width: bodyWidth,
-  height: bodyHeight
+  elem: $canvas
 };
 canvas       = new Canvas(args);
 color        = new Color(canvas);
 canvas.color = color;
+
+canvas.resize();
 
 Hammer($body).on("drag", function(ev) {
   if (!pinching) {
@@ -229,4 +230,10 @@ Hammer($body).on("release", function(ev) {
   }
 
   pinching = false;
+});
+
+// resize events
+
+window.addEventListener('resize', function() {
+  canvas.resize();
 });
