@@ -10,20 +10,28 @@ a {
   cursor: pointer;
 }
 
-.hex:before,
-.hex:after {
+.color:before,
+.color:after {
   content: " "; /* 1 */
   display: table; /* 2 */
 }
 
-.hex:after {
+.color:after {
   clear: both;
 }
 
-.hex span {
+.color span {
   padding: 1em;
   display: block;
+}
+
+.color .hex {
   float: left;
+}
+
+.color .x {
+  float: right;
+  cursor: pointer;
 }
 
 #save {

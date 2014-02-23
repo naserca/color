@@ -43,9 +43,11 @@ Canvas.prototype.isWithinCircle = function(radius) {
 
 // color
 
-function Color(hsv) {
-  this.hsv = hsv || { h: 1, s: 1, v: .75 };
+function Color(args) {
+  this.hsv = args.hsv || { h: 1, s: 1, v: .75 };
+  this.id  = args.id || Math.random();
   this.convertToRgb();
+  return this;
 }
 
 Color.prototype.changeH = function(pageX, pageY) {
@@ -103,7 +105,7 @@ Color.prototype.convertToRgb = function() {
 Color.prototype.isNotAlreadySaved = function() {
   var notSaved = true;
   for (i = 0; i < savedColors.length; i++) {
-    if (JSON.stringify(savedColors[i]) === JSON.stringify(this.hsv)) return notSaved = false;
+    if (JSON.stringify(savedColors[i].hsv) === JSON.stringify(this.hsv)) return notSaved = false;
   }
   return notSaved;
 }
@@ -114,7 +116,7 @@ Color.prototype.hexString = function() {
 
 Color.prototype.addDiv = function() {
   $canvas.insertAdjacentHTML('beforebegin',
-    "<div class='hex' style='background-color:"+this.string()+";'><span>"+this.hexString()+"</span></div>"
+    "<div class='color' data-id='"+this.id+"' style='background-color:"+this.string()+";'><span class='hex'>"+this.hexString()+"</span><span class='x'>&#215;</span></div>"
   );
 }
 
@@ -173,26 +175,24 @@ var animationIds = [];
 
 var started = false;
 
-var canvas, color, args;
-args = {
-  elem: $canvas
-};
-canvas = new Canvas(args);
-color  = new Color();
+var canvas, color;
+canvas = new Canvas({ elem: $canvas });
+color  = new Color({});
 
-// these are HSVs
 var colorsStrings = localStorage.getItem("colors");
-
 if (colorsStrings.length > 0) {
   var colors = JSON.parse(colorsStrings);
 
   for (var i = 0; i < colors.length; i++) {
-    savedColor = new Color(colors[i]);
+    var savedColor = new Color({
+      id: colors[i].id,
+      hsv: colors[i].hsv,
+    });
     savedColor.addDiv();
-    var hsvString = clone(JSON.stringify(savedColor.hsv));
-    savedColors.push(JSON.parse(hsvString));
+    savedColors.push(savedColor);
   }
 }
+setUpXs();
 
 canvas.resize();
 
@@ -235,29 +235,36 @@ Hammer($canvas).on("pinch", function(ev) {
   color.convertToRgb();
 });
 
-function clone(obj) {
-  if (null == obj || "object" != typeof obj) return obj;
-  var copy = obj.constructor();
-  for (var attr in obj) {
-    if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+function closest(elem, selector) {
+  var matchesSelector = elem.matches || elem.webkitMatchesSelector || elem.mozMatchesSelector || elem.msMatchesSelector;
+
+  while (elem) {
+    if (matchesSelector.bind(elem)(selector)) {
+      return elem;
+    } else {
+      elem = elem.parentNode;
+    }
   }
-  return copy;
+  return false;
 }
 
 Hammer($canvas).on("tap", function(ev) {
   ev.gesture.preventDefault();
-  if ((started) && (color.isNotAlreadySaved())) {
+  if ((started) && (color.isNotAlreadySaved()) && savedColors.length < 5) {
     color.addDiv();
+    canvas.resize();
 
-    var hsvString = clone(JSON.stringify(color.hsv));
-
-    // add to array
-    savedColors.push(JSON.parse(hsvString));
+    // hack to clone
+    var savedColorString = JSON.stringify(color);
 
     // start over with the same color as a starting point
-    color = new Color(JSON.parse(hsvString));
+    color = new Color({ hsv: JSON.parse(savedColorString).hsv });
 
-    canvas.resize();
+    savedColors.push(JSON.parse(savedColorString));
+
+    localStorage.setItem("colors", JSON.stringify(savedColors));
+
+    setUpXs();
   }
 });
 
@@ -295,10 +302,28 @@ window.addEventListener('resize', function() {
   canvas.resize();
 });
 
-// save
-
-var $save = document.getElementById('save')
-
-Hammer($save).on("tap", function(ev) {
-  localStorage.setItem("colors", JSON.stringify(savedColors));
+window.addEventListener('orientationchange', function() {
+  canvas.resize();
 });
+
+// x's
+
+function setUpXs() {
+  var $x = document.querySelectorAll('.color .x');
+
+  for (var i = 0; i < $x.length; i++) {
+    Hammer($x[i]).on("tap", function(ev) {
+      var $colorDiv = (closest(this, '.color'));
+      $colorDiv.parentNode.removeChild($colorDiv);
+      var colorId = $colorDiv.getAttribute("data-id");
+
+      for (j = 0; j < savedColors.length; j++) {
+        if (JSON.stringify(savedColors[j].id) === colorId) {
+          savedColors.splice(j, 1);
+          localStorage.setItem("colors", JSON.stringify(savedColors));
+        }
+      }
+      canvas.resize();
+    });
+  }
+}
