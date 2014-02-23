@@ -1,9 +1,10 @@
+window.savedColors = [];
+
 // canvas
 
 function Canvas(args) {
   this.elem = args.elem;
   this.ctx = this.elem.getContext('2d');
-  this.color = {};
   this.resize();
 }
 
@@ -24,7 +25,7 @@ Canvas.prototype.resize = function() {
 }
 
 Canvas.prototype.draw = function() {
-  this.ctx.fillStyle = this.color.string();
+  this.ctx.fillStyle = color.string();
   this.ctx.fillRect(0, 0, this.width, this.height);
 };
 
@@ -42,21 +43,20 @@ Canvas.prototype.isWithinCircle = function(radius) {
 
 // color
 
-function Color(canvas) {
-  this.hsv = { h: 1, s: 1, v: 1 };
-  this.canvas = canvas;
+function Color(hsv) {
+  this.hsv = hsv || { h: 1, s: 1, v: .75 };
   this.convertToRgb();
 }
 
 Color.prototype.changeH = function(pageX, pageY) {
-  var referenceX = this.canvas.middleX,
-      referenceY = this.canvas.middleY - this.canvas.getRadius(pageX, pageY);
+  var referenceX = canvas.middleX,
+      referenceY = canvas.middleY - canvas.getRadius(pageX, pageY);
   var degrees = (2 * Math.atan2(pageY - referenceY, pageX - referenceX)) * 180 / Math.PI;
   this.hsv.h = degrees / 360;
 }
 
 Color.prototype.changeS = function(radius) {
-  this.hsv.s = (this.canvas.isWithinCircle(radius)) ? radius / this.canvas.maxRadius : 1;
+  this.hsv.s = (canvas.isWithinCircle(radius)) ? radius / canvas.maxRadius : 1;
 }
 
 Color.prototype.changeV = function(distanceDiff) {
@@ -100,8 +100,22 @@ Color.prototype.convertToRgb = function() {
   };
 }
 
+Color.prototype.isNotAlreadySaved = function() {
+  var notSaved = true;
+  for (i = 0; i < savedColors.length; i++) {
+    if (JSON.stringify(savedColors[i]) === JSON.stringify(this.hsv)) return notSaved = false;
+  }
+  return notSaved;
+}
+
 Color.prototype.hexString = function() {
   return "#" + ((1 << 24) + (this.rgb.r << 16) + (this.rgb.g << 8) + this.rgb.b).toString(16).slice(1);
+}
+
+Color.prototype.addDiv = function() {
+  $canvas.insertAdjacentHTML('beforebegin',
+    "<div class='hex' style='background-color:"+this.string()+";'><span>"+this.hexString()+"</span></div>"
+  );
 }
 
 // pinch
@@ -146,7 +160,7 @@ $body = document.body;
 $canvas = document.getElementById('canvas');
 
 function animate(canvas) {
-  canvas.draw(canvas.color);
+  canvas.draw(color);
 
   var animationId = window.requestAnimationFrame(function(){
     animate(canvas)
@@ -163,9 +177,22 @@ var canvas, color, args;
 args = {
   elem: $canvas
 };
-canvas       = new Canvas(args);
-color        = new Color(canvas);
-canvas.color = color;
+canvas = new Canvas(args);
+color  = new Color();
+
+// these are HSVs
+var colorsStrings = localStorage.getItem("colors");
+
+if (colorsStrings.length > 0) {
+  var colors = JSON.parse(colorsStrings);
+
+  for (var i = 0; i < colors.length; i++) {
+    savedColor = new Color(colors[i]);
+    savedColor.addDiv();
+    var hsvString = clone(JSON.stringify(savedColor.hsv));
+    savedColors.push(JSON.parse(hsvString));
+  }
+}
 
 canvas.resize();
 
@@ -175,9 +202,9 @@ Hammer($canvas).on("drag", function(ev) {
         pageY = ev.gesture.center.pageY,
         radius = canvas.getRadius(pageX, pageY);
 
-    canvas.color.changeH(pageX, pageY);
-    canvas.color.changeS(radius);
-    canvas.color.convertToRgb();
+    color.changeH(pageX, pageY);
+    color.changeS(radius);
+    color.convertToRgb();
   }
 });
 
@@ -204,17 +231,33 @@ Hammer($canvas).on("pinch", function(ev) {
   var diffMultiplier = currentPinch.getDiffMultiplier(pageX, pageY, middleX, middleY);
   currentPinch.resetDifference();
 
-  canvas.color.changeV(diffMultiplier);
-  canvas.color.convertToRgb();
+  color.changeV(diffMultiplier);
+  color.convertToRgb();
 });
+
+function clone(obj) {
+  if (null == obj || "object" != typeof obj) return obj;
+  var copy = obj.constructor();
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+  }
+  return copy;
+}
 
 Hammer($canvas).on("tap", function(ev) {
   ev.gesture.preventDefault();
-  if (started) {
-    $canvas.insertAdjacentHTML('beforebegin',
-      "<div style='background-color:"+canvas.color.string()+";'><span>"+canvas.color.hexString()+"</span></div>"
-    );
-    canvas.resize()
+  if ((started) && (color.isNotAlreadySaved())) {
+    color.addDiv();
+
+    var hsvString = clone(JSON.stringify(color.hsv));
+
+    // add to array
+    savedColors.push(JSON.parse(hsvString));
+
+    // start over with the same color as a starting point
+    color = new Color(JSON.parse(hsvString));
+
+    canvas.resize();
   }
 });
 
@@ -250,4 +293,12 @@ Hammer($canvas).on("release", function(ev) {
 
 window.addEventListener('resize', function() {
   canvas.resize();
+});
+
+// save
+
+var $save = document.getElementById('save')
+
+Hammer($save).on("tap", function(ev) {
+  localStorage.setItem("colors", JSON.stringify(savedColors));
 });

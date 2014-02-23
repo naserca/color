@@ -3,10 +3,33 @@ body {
   font-weight: 300;
   margin: 0;
   background-color: black;
+  color: white;
 }
 
-div span {
-  color: white;
+a {
+  cursor: pointer;
+}
+
+.hex:before,
+.hex:after {
+  content: " "; /* 1 */
+  display: table; /* 2 */
+}
+
+.hex:after {
+  clear: both;
+}
+
+.hex span {
   padding: 1em;
   display: block;
+  float: left;
+}
+
+#save {
+  display: inline-block;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  padding: 1em;
 }
