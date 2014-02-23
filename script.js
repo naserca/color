@@ -24,8 +24,9 @@ Canvas.prototype.resize = function() {
   this.ctx = this.elem.getContext('2d');
 }
 
-Canvas.prototype.draw = function() {
-  this.ctx.fillStyle = color.string();
+Canvas.prototype.draw = function(prefillColor) {
+  var colorToDraw = prefillColor || color;
+  this.ctx.fillStyle = colorToDraw.string();
   this.ctx.fillRect(0, 0, this.width, this.height);
 };
 
@@ -173,8 +174,6 @@ function animate(canvas) {
 
 var animationIds = [];
 
-var started = false;
-
 var canvas, color;
 canvas = new Canvas({ elem: $canvas });
 color  = new Color({});
@@ -182,19 +181,24 @@ color  = new Color({});
 var colorsStrings = localStorage.getItem("colors");
 if (colorsStrings.length > 0) {
   var colors = JSON.parse(colorsStrings);
-
-  for (var i = 0; i < colors.length; i++) {
-    var savedColor = new Color({
-      id: colors[i].id,
-      hsv: colors[i].hsv,
-    });
-    savedColor.addDiv();
-    savedColors.push(savedColor);
+  if (colors.length > 0) {
+    for (var i = 0; i < colors.length; i++) {
+      var savedColor = new Color({
+        id: colors[i].id,
+        hsv: colors[i].hsv,
+      });
+      savedColor.addDiv();
+      savedColors.push(savedColor);
+    }
+    var prefillColor = savedColors[savedColors.length - 1];
+    setUpXs();
+    canvas.draw(prefillColor);
   }
 }
-setUpXs();
 
 canvas.resize();
+
+var started = (savedColors.length > 0);
 
 Hammer($canvas).on("drag", function(ev) {
   if (!pinching) {
@@ -212,27 +216,21 @@ var pinching = false,
     currentPinch = undefined;
 
 Hammer($canvas).on("pinch", function(ev) {
-  var middleX = ev.gesture.center.pageX,
-      middleY = ev.gesture.center.pageY,
-      pageX   = ev.gesture.touches[0].pageX,
-      pageY   = ev.gesture.touches[0].pageY;
-
   if (!pinching) {
-    args = {
-      middleX: middleX,
-      middleY: middleY,
-      pageX: pageX,
-      pageY: pageY
-    };
-    currentPinch = new Pinch(args);
+    currentPinch = new Pinch({
+      middleX: ev.gesture.center.pageX,
+      middleY: ev.gesture.center.pageY,
+      pageX:   ev.gesture.touches[0].pageX,
+      pageY:   ev.gesture.touches[0].pageY
+    });
     pinching = true;
   }
 
   var diffMultiplier = currentPinch.getDiffMultiplier(pageX, pageY, middleX, middleY);
-  currentPinch.resetDifference();
-
   color.changeV(diffMultiplier);
   color.convertToRgb();
+
+  currentPinch.resetDifference();
 });
 
 function closest(elem, selector) {
