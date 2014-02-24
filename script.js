@@ -117,7 +117,11 @@ Color.prototype.hexString = function() {
 
 Color.prototype.addDiv = function() {
   $canvas.insertAdjacentHTML('beforebegin',
-    "<div class='color' data-id='"+this.id+"' style='background-color:"+this.string()+";'><span class='hex'>"+this.hexString()+"</span><span class='x'>&#215;</span></div>"
+    "<div class='color' data-id='"+this.id+"'\
+    style='background-color:"+this.string()+";'>\
+    \ <span class='hex'>"+this.hexString()+"</span>\
+    \ <span class='x'>&#215;</span>\
+    </div>"
   );
 }
 
@@ -178,8 +182,9 @@ var canvas, color;
 canvas = new Canvas({ elem: $canvas });
 color  = new Color({});
 
+// load from localStorage
 var colorsStrings = localStorage.getItem("colors");
-if (colorsStrings.length > 0) {
+if ((colorsStrings != null) && (colorsStrings.length > 0)) {
   var colors = JSON.parse(colorsStrings);
   if (colors.length > 0) {
     for (var i = 0; i < colors.length; i++) {
@@ -190,9 +195,11 @@ if (colorsStrings.length > 0) {
       savedColor.addDiv();
       savedColors.push(savedColor);
     }
-    var prefillColor = savedColors[savedColors.length - 1];
+    // hack to clone
+    var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
+    color = new Color({ hsv: JSON.parse(savedColorString).hsv });
     setUpXs();
-    canvas.draw(prefillColor);
+    canvas.draw();
   }
 }
 
@@ -296,13 +303,8 @@ Hammer($canvas).on("release", function(ev) {
 
 // resize events
 
-window.addEventListener('resize', function() {
-  canvas.resize();
-});
-
-window.addEventListener('orientationchange', function() {
-  canvas.resize();
-});
+window.addEventListener('resize', function() { canvas.resize(); });
+window.addEventListener('orientationchange', function() { canvas.resize(); });
 
 // x's
 
