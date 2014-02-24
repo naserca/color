@@ -129,12 +129,12 @@ Color.prototype.createDiv = function() {
   return $div;
 }
 
-Color.prototype.setupDeleteHandler = function() {
+Color.prototype.setupDeleteHandler = function($div) {
   var $x = $div.querySelector('.x'),
       that = this;
 
   Hammer($x).on("tap", function(ev) {
-    that.deleteSelf();
+    that.deleteSelf($div);
     saveToLocalStorage();
   });
 }
@@ -146,13 +146,22 @@ Color.prototype.addDiv = function() {
   canvas.resize();
 }
 
-Color.prototype.deleteSelf = function() {
-  var that = this;
+Color.prototype.saveSelf = function() {
+  this.addDiv();
+  savedColors.push(this);
+}
+
+Color.prototype.deleteDiv = function($div) {
   $div.style.display = 'none';
   canvas.resize();
+}
+
+Color.prototype.deleteSelf = function($div) {
+  this.deleteDiv($div);
   for (i = 0; i < savedColors.length; i++) {
-    if (savedColors[i].id === that.id) {
-      savedColors.splice(i, 1); break;
+    if (savedColors[i].id === this.id) {
+      savedColors.splice(i, 1);
+      break;
     }
   }
 }
@@ -224,11 +233,9 @@ if ((colorsStrings != null) && (colorsStrings.length > 0)) {
         id: colors[i].id,
         hsv: colors[i].hsv,
       });
-      savedColor.addDiv();
-      savedColors.push(savedColor);
+      savedColor.saveSelf();
     }
     // hack to clone
-    console.log(savedColors);
     var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
     color = new Color({ hsv: JSON.parse(savedColorString).hsv });
     canvas.draw();
