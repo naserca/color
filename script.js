@@ -208,7 +208,7 @@ canvas.resize();
 var started = (savedColors.length > 0);
 
 Hammer($canvas).on("drag", function(ev) {
-  if (!pinching) {
+  if (!savedColorsFull() || !pinching) {
     var pageX = ev.gesture.center.pageX,
         pageY = ev.gesture.center.pageY,
         radius = canvas.getRadius(pageX, pageY);
@@ -223,21 +223,30 @@ var pinching = false,
     currentPinch = undefined;
 
 Hammer($canvas).on("pinch", function(ev) {
-  if (!pinching) {
-    currentPinch = new Pinch({
-      middleX: ev.gesture.center.pageX,
-      middleY: ev.gesture.center.pageY,
-      pageX:   ev.gesture.touches[0].pageX,
-      pageY:   ev.gesture.touches[0].pageY
-    });
-    pinching = true;
+  if (!savedColorsFull()) {
+    var middleX = ev.gesture.center.pageX,
+        middleY = ev.gesture.center.pageY,
+        pageX   = ev.gesture.touches[0].pageX,
+        pageY   = ev.gesture.touches[0].pageY;
+
+    if (!pinching) {
+      currentPinch = new Pinch({
+        middleX: middleX,
+        middleY: middleY,
+        pageX:   pageX,
+        pageY:   pageY
+      });
+      pinching = true;
+    }
+
+    var diffMultiplier = currentPinch.getDiffMultiplier(
+      pageX, pageY, middleX, middleY
+    );
+    color.changeV(diffMultiplier);
+    color.convertToRgb();
+
+    currentPinch.resetDifference();
   }
-
-  var diffMultiplier = currentPinch.getDiffMultiplier(pageX, pageY, middleX, middleY);
-  color.changeV(diffMultiplier);
-  color.convertToRgb();
-
-  currentPinch.resetDifference();
 });
 
 function closest(elem, selector) {
@@ -277,18 +286,22 @@ Hammer($canvas).on("tap", function(ev) {
 
 Hammer($canvas).on("dragstart", function(ev) {
   ev.gesture.preventDefault();
-  var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
-  animationIds.push(animationId);
-  started = true;
+  if (!savedColorsFull()) {
+    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+    animationIds.push(animationId);
+    started = true;
+  }
 });
 
 Hammer($canvas).on("touch", function(ev) {
   ev.gesture.preventDefault();
-  if (started) {
-    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
-    animationIds.push(animationId);
-  } else {
-    if (ev.gesture.touches.length > 1) ev.gesture.stopDetect();
+  if (!savedColorsFull()) {
+    if (started) {
+      var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+      animationIds.push(animationId);
+    } else {
+      if (ev.gesture.touches.length > 1) ev.gesture.stopDetect();
+    }
   }
 });
 
@@ -314,7 +327,7 @@ function setUpXs() {
   for (var i = 0; i < $x.length; i++) {
     Hammer($x[i]).on("tap", function(ev) {
       var $colorDiv = (closest(this, '.color'));
-      $colorDiv.parentNode.removeChild($colorDiv);
+      $colorDiv.style.display = 'none';
       var colorId = $colorDiv.getAttribute("data-id");
 
       for (j = 0; j < savedColors.length; j++) {
@@ -326,4 +339,8 @@ function setUpXs() {
       canvas.resize();
     });
   }
+}
+
+function savedColorsFull() {
+  return (savedColors.length >= 5);
 }
