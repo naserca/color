@@ -108,7 +108,9 @@ Color.prototype.hexToRgb = function(hexString) {
   return this.rgb;
 }
 
-Color.prototype.rgbToHsv = function(rgb) {
+Color.prototype.hexToHsv = function(hexString) {
+  var rgb = this.hexToRgb(hexString);
+
   var r = rgb.r / 255,
       g = rgb.g / 255,
       b = rgb.b / 255;
@@ -281,27 +283,44 @@ var canvas, color;
 canvas = new Canvas({ elem: $canvas });
 color  = new Color({});
 
-// load from localStorage
-var colorsStrings = localStorage.getItem("colors");
-if ((colorsStrings != null) && (colorsStrings.length > 0)) {
-  var colors = JSON.parse(colorsStrings);
-  if (colors.length > 0) {
-    for (var i = 0; i < colors.length; i++) {
-      var savedColor = new Color({
-        id: colors[i].id,
-        hsv: colors[i].hsv,
-      });
-      savedColor.saveSelf();
-    }
-    // hack to clone
-    var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
-    color = new Color({ hsv: JSON.parse(savedColorString).hsv });
-    canvas.draw();
-  }
-}
-
 // load from URL
 var hexArray = getHexArrayFromUrl();
+
+if (hexArray.length) {
+  for (var i = 0; i < hexArray.length; i++) {
+    hex = hexArray[i];
+    colorFromUrl = new Color({});
+    colorFromUrl.hexToHsv(hex);
+    colorFromUrl.hsvToRgb();
+    colorFromUrl.saveSelf();
+  }
+
+  // hack to clone
+  var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
+  color = new Color({ hsv: JSON.parse(savedColorString).hsv });
+  canvas.draw();
+
+} else {
+
+  // load from localStorage
+  var colorsStrings = localStorage.getItem("colors");
+  if ((colorsStrings != null) && (colorsStrings.length > 0)) {
+    var colors = JSON.parse(colorsStrings);
+    if (colors.length > 0) {
+      for (var i = 0; i < colors.length; i++) {
+        var savedColor = new Color({
+          id: colors[i].id,
+          hsv: colors[i].hsv,
+        });
+        savedColor.saveSelf();
+      }
+      // hack to clone
+      var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
+      color = new Color({ hsv: JSON.parse(savedColorString).hsv });
+      canvas.draw();
+    }
+  }
+}
 
 canvas.resize();
 
