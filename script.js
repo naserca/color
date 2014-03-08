@@ -1,8 +1,23 @@
 window.savedColors = [];
+function savedColorsFull() {
+  return (savedColors.length >= 5);
+}
 
 function saveToLocalStorage() {
   localStorage.setItem("colors", JSON.stringify(savedColors));
 }
+
+function changeUrl() {
+  savedColorHexStrings = savedColors.map(function(savedColor) {
+    return savedColor.hexString();
+  });
+  history.replaceState('', '', savedColorHexStrings.join(''));
+}
+
+function getHexArrayFromUrl() {
+  var url = document.URL;
+  return url.match(/(\#.{6})/g);
+};
 
 // canvas
 
@@ -30,7 +45,7 @@ Canvas.prototype.resize = function() {
 
 Canvas.prototype.draw = function(prefillColor) {
   var colorToDraw = prefillColor || color;
-  this.ctx.fillStyle = colorToDraw.string();
+  this.ctx.fillStyle = colorToDraw.rgbString();
   this.ctx.fillRect(0, 0, this.width, this.height);
 };
 
@@ -51,7 +66,7 @@ Canvas.prototype.isWithinCircle = function(radius) {
 function Color(args) {
   this.hsv = args.hsv || { h: 1, s: 1, v: .75 };
   this.id  = args.id || Math.random();
-  this.convertToRgb();
+  this.hsvToRgb();
   return this;
 }
 
@@ -76,11 +91,50 @@ Color.prototype.changeV = function(distanceDiff) {
     this.hsv.v = rawV;
 }
 
-Color.prototype.string = function() {
+Color.prototype.rgbString = function() {
   return "rgb("+this.rgb.r+","+this.rgb.g+","+this.rgb.b+")";
 }
 
-Color.prototype.convertToRgb = function() {
+Color.prototype.hexToRgb = function(hexString) {
+  if (hexString === undefined)
+    hexString = this.hexString();
+  cleanHexString = hexString.slice(1);
+
+  this.rgb = {
+    r: parseInt(cleanHexString.substring(0,2), 16),
+    g: parseInt(cleanHexString.substring(2,4), 16),
+    b: parseInt(cleanHexString.substring(4,6), 16)
+  }
+  return this.rgb;
+}
+
+Color.prototype.rgbToHsv = function(rgb) {
+  var r = rgb.r / 255,
+      g = rgb.g / 255,
+      b = rgb.b / 255;
+ 
+  var max = Math.max(r, g, b), min = Math.min(r, g, b);
+  var h, s, v = max;
+ 
+  var d = max - min;
+  s = max == 0 ? 0 : d / max;
+ 
+  if (max == min) {
+    h = 0; // achromatic
+  } else {
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+ 
+  this.hsv = { h: h, s: s, v: v };
+  return this.hsv;
+}
+
+Color.prototype.hsvToRgb = function() {
   var r, g, b, i, f, p, q, t,
       h = this.hsv.h,
       s = this.hsv.s,
@@ -105,6 +159,7 @@ Color.prototype.convertToRgb = function() {
     g: Math.floor(g * 255),
     b: Math.floor(b * 255)
   };
+  return this.rgb;
 }
 
 Color.prototype.isNotAlreadySaved = function() {
@@ -123,7 +178,7 @@ Color.prototype.createDiv = function() {
   $div = document.createElement('div');
   $div.className += 'color';
   $div.setAttribute("data-id", this.id);
-  $div.style.backgroundColor = this.string();
+  $div.style.backgroundColor = this.rgbString();
   $div.innerHTML = "<span class='hex'>"+this.hexString()+"</span>\
   \                 <span class='x'>&#215;</span>"
   return $div;
@@ -148,7 +203,10 @@ Color.prototype.addDiv = function() {
 
 Color.prototype.saveSelf = function() {
   this.addDiv();
+  this.hexToRgb();
   savedColors.push(this);
+  saveToLocalStorage();
+  changeUrl();
 }
 
 Color.prototype.deleteDiv = function($div) {
@@ -242,6 +300,9 @@ if ((colorsStrings != null) && (colorsStrings.length > 0)) {
   }
 }
 
+// load from URL
+var hexArray = getHexArrayFromUrl();
+
 canvas.resize();
 
 var started = (savedColors.length > 0);
@@ -254,7 +315,7 @@ Hammer($canvas).on("drag", function(ev) {
 
     color.changeH(pageX, pageY);
     color.changeS(radius);
-    color.convertToRgb();
+    color.hsvToRgb();
   }
 });
 
@@ -262,6 +323,8 @@ var pinching = false,
     currentPinch = undefined;
 
 Hammer($canvas).on("pinch", function(ev) {
+  ev.gesture.preventDefault();
+
   if (!savedColorsFull()) {
     var middleX = ev.gesture.center.pageX,
         middleY = ev.gesture.center.pageY,
@@ -278,44 +341,24 @@ Hammer($canvas).on("pinch", function(ev) {
       pinching = true;
     }
 
-    var diffMultiplier = currentPinch.getDiffMultiplier(
-      pageX, pageY, middleX, middleY
-    );
+    var diffMultiplier = currentPinch.getDiffMultiplier(pageX, pageY, middleX, middleY);
     color.changeV(diffMultiplier);
-    color.convertToRgb();
+    color.hsvToRgb();
 
     currentPinch.resetDifference();
   }
 });
 
-function closest(elem, selector) {
-  var matchesSelector = elem.matches || elem.webkitMatchesSelector || elem.mozMatchesSelector || elem.msMatchesSelector;
-
-  while (elem) {
-    if (matchesSelector.bind(elem)(selector)) {
-      return elem;
-    } else {
-      elem = elem.parentNode;
-    }
-  }
-  return false;
-}
-
 Hammer($canvas).on("tap", function(ev) {
   ev.gesture.preventDefault();
-  if ((started) && (color.isNotAlreadySaved()) && savedColors.length < 5) {
-    color.addDiv();
-    canvas.resize();
+  if ((started) && (color.isNotAlreadySaved()) && (!savedColorsFull())) {
+    color.saveSelf();
 
     // hack to clone
     var savedColorString = JSON.stringify(color);
 
     // start over with the same color as a starting point
     color = new Color({ hsv: JSON.parse(savedColorString).hsv });
-
-    savedColors.push(JSON.parse(savedColorString));
-
-    localStorage.setItem("colors", JSON.stringify(savedColors));
   }
 });
 
@@ -355,7 +398,3 @@ Hammer($canvas).on("release", function(ev) {
 
 window.addEventListener('resize', function() { canvas.resize(); });
 window.addEventListener('orientationchange', function() { canvas.resize(); });
-
-function savedColorsFull() {
-  return (savedColors.length >= 5);
-}
