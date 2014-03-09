@@ -1,4 +1,22 @@
 window.savedColors = [];
+
+function animate(canvas) {
+  canvas.draw(color);
+
+  var animationId = window.requestAnimationFrame(function(){
+    animate(canvas)
+  });
+
+  animationIds.push(animationId);
+}
+
+function stopAnimation() {
+  for (var i = 0; i < animationIds.length; i++) {
+    animationId = animationIds[i];
+    window.cancelAnimationFrame(animationId);
+  }
+}
+
 function savedColorsFull() {
   return (savedColors.length >= 5);
 }
@@ -317,16 +335,6 @@ var $body, $canvas;
 $body = document.body;
 $canvas = document.getElementById('canvas');
 
-function animate(canvas) {
-  canvas.draw(color);
-
-  var animationId = window.requestAnimationFrame(function(){
-    animate(canvas)
-  });
-
-  animationIds.push(animationId);
-}
-
 var animationIds = [];
 
 var canvas, color;
@@ -355,6 +363,25 @@ if (savedColors.length > 0) {
 }
 
 canvas.resize();
+
+var timeoutId;
+$canvas.onmousewheel = function(ev) {
+  ev.preventDefault();
+
+  if (!savedColorsFull()) {
+    var animationId = window.requestAnimationFrame(function(){ animate(canvas) });
+    animationIds.push(animationId);
+
+    var distanceDiff = -(ev.wheelDeltaY / 3000);
+    color.changeV(distanceDiff);
+    color.hsvToRgb();
+
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(function() {
+      stopAnimation();
+    }, 250);
+  }
+}
 
 var started = (savedColors.length > 0);
 
@@ -437,10 +464,7 @@ Hammer($canvas).on("touch", function(ev) {
 });
 
 Hammer($canvas).on("release", function(ev) {
-  for (var i = 0; i < animationIds.length; i++) {
-    animationId = animationIds[i];
-    window.cancelAnimationFrame(animationId);
-  }
+  stopAnimation();
 
   pinching = false;
 });
