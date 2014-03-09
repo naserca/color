@@ -11,7 +11,11 @@ function changeUrl() {
   savedColorHexStrings = savedColors.map(function(savedColor) {
     return savedColor.hexString();
   });
-  history.replaceState('', '', savedColorHexStrings.join(''));
+  urlString = savedColorHexStrings.join('');
+  if (urlString.length > 0)
+    return history.pushState('', '', urlString);
+  else
+    window.location = urlString;
 }
 
 function getHexArrayFromUrl() {
@@ -193,6 +197,7 @@ Color.prototype.setupDeleteHandler = function($div) {
   Hammer($x).on("tap", function(ev) {
     that.deleteSelf($div);
     saveToLocalStorage();
+    changeUrl();
   });
 }
 
@@ -285,8 +290,9 @@ color  = new Color({});
 
 // load from URL
 var hexArray = getHexArrayFromUrl();
+console.log(hexArray);
 
-if (hexArray.length) {
+if (hexArray !== null) {
   for (var i = 0; i < hexArray.length; i++) {
     hex = hexArray[i];
     colorFromUrl = new Color({});
