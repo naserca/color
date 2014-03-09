@@ -13,7 +13,7 @@ function changeUrl() {
   });
   urlString = savedColorHexStrings.join('');
   if (urlString.length > 0)
-    return history.pushState('', '', urlString);
+    return history.replaceState('', '', urlString);
   else
     window.location = urlString;
 }
@@ -22,6 +22,43 @@ function getHexArrayFromUrl() {
   var url = document.URL;
   return url.match(/(\#.{6})/g);
 };
+
+function loadFromUrl(args) {
+  var hexArray = args.hexArray,
+      color    = args.color,
+      canvas   = args.canvas;
+
+  for (var i = 0; i < hexArray.length; i++) {
+    hex = hexArray[i];
+    colorFromUrl = new Color({ hexString: hex });
+    colorFromUrl.saveSelf();
+  }
+}
+
+function loadFromLocalStorage(args) {
+  var color    = args.color,
+      canvas   = args.canvas;
+
+  var colorsStrings = localStorage.getItem("colors");
+  if ((colorsStrings != null) && (colorsStrings.length > 0)) {
+    var colors = JSON.parse(colorsStrings);
+    if (colors.length > 0) {
+      for (var i = 0; i < colors.length; i++) {
+        var savedColor = new Color({
+          id: colors[i].id,
+          hsv: colors[i].hsv,
+        });
+        savedColor.saveSelf();
+      }
+    }
+  }
+}
+
+function prepareNextColor() {
+  // hack to clone
+  var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
+  return new Color({ hsv: JSON.parse(savedColorString).hsv });
+}
 
 // canvas
 
@@ -38,23 +75,26 @@ Canvas.prototype.resize = function() {
   this.middleX = this.width / 2 + this.elem.offsetLeft;
   this.middleY = this.height / 2 + this.elem.offsetTop;
 
+  this.drawWidth = 
+
   this.isLandscape = (this.width - this.height >= 0);
   this.shortestSideLength = this.isLandscape ? this.height : this.width;
   this.maxRadius = this.shortestSideLength / 2;
 
-  $canvas.style.width = this.width + "px";
-  $canvas.style.height = this.height + "px";
+  this.elem.style.width = this.width + "px";
+  this.elem.style.height = this.height + "px";
+
   this.ctx = this.elem.getContext('2d');
 }
 
 Canvas.prototype.draw = function(prefillColor) {
   var colorToDraw = prefillColor || color;
   this.ctx.fillStyle = colorToDraw.rgbString();
-  this.ctx.fillRect(0, 0, this.width, this.height);
+  this.ctx.fillRect(0, 0, 350, 150);
 };
 
 Canvas.prototype.clear = function() {
-  this.ctx.clearRect(0, 0, this.width, this.height);
+  this.ctx.clearRect(0, 0, 350, 150);
 }
 
 Canvas.prototype.getRadius = function(pageX, pageY) {
@@ -68,8 +108,12 @@ Canvas.prototype.isWithinCircle = function(radius) {
 // color
 
 function Color(args) {
-  this.hsv = args.hsv || { h: 1, s: 1, v: .75 };
-  this.id  = args.id || Math.random();
+  if (args.hexString === undefined) {
+    this.hsv = args.hsv || { h: 1, s: 1, v: .75 };
+  } else {
+    this.hexToHsv(args.hexString);
+  }
+  this.id = args.id || Math.random();
   this.hsvToRgb();
   return this;
 }
@@ -102,6 +146,7 @@ Color.prototype.rgbString = function() {
 Color.prototype.hexToRgb = function(hexString) {
   if (hexString === undefined)
     hexString = this.hexString();
+
   cleanHexString = hexString.slice(1);
 
   this.rgb = {
@@ -290,42 +335,23 @@ color  = new Color({});
 
 // load from URL
 var hexArray = getHexArrayFromUrl();
-console.log(hexArray);
 
 if (hexArray !== null) {
-  for (var i = 0; i < hexArray.length; i++) {
-    hex = hexArray[i];
-    colorFromUrl = new Color({});
-    colorFromUrl.hexToHsv(hex);
-    colorFromUrl.hsvToRgb();
-    colorFromUrl.saveSelf();
-  }
-
-  // hack to clone
-  var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
-  color = new Color({ hsv: JSON.parse(savedColorString).hsv });
-  canvas.draw();
-
+  loadFromUrl({
+    hexArray: hexArray,
+    color: color,
+    canvas: canvas
+  });
 } else {
+  loadFromLocalStorage({
+    color: color,
+    canvas: canvas
+  });
+}
 
-  // load from localStorage
-  var colorsStrings = localStorage.getItem("colors");
-  if ((colorsStrings != null) && (colorsStrings.length > 0)) {
-    var colors = JSON.parse(colorsStrings);
-    if (colors.length > 0) {
-      for (var i = 0; i < colors.length; i++) {
-        var savedColor = new Color({
-          id: colors[i].id,
-          hsv: colors[i].hsv,
-        });
-        savedColor.saveSelf();
-      }
-      // hack to clone
-      var savedColorString = JSON.stringify(savedColors[savedColors.length - 1]);
-      color = new Color({ hsv: JSON.parse(savedColorString).hsv });
-      canvas.draw();
-    }
-  }
+if (savedColors.length > 0) {
+  color = prepareNextColor();
+  canvas.draw();
 }
 
 canvas.resize();
@@ -417,6 +443,10 @@ Hammer($canvas).on("release", function(ev) {
   }
 
   pinching = false;
+});
+
+Hammer($body).on("touch", function(ev) {
+  ev.gesture.preventDefault();
 });
 
 // resize events
