@@ -1,4 +1,5 @@
 window.savedColors = [];
+localStorageString = "naserca-colors-v-0-0-1";
 
 function animate(canvas) {
   canvas.draw(color);
@@ -21,8 +22,12 @@ function savedColorsFull() {
   return (savedColors.length >= 5);
 }
 
+function savedColorsEmpty() {
+  return (savedColors.length <= 0);
+}
+
 function saveToLocalStorage() {
-  localStorage.setItem("colors", JSON.stringify(savedColors));
+  localStorage.setItem(localStorageString, JSON.stringify(savedColors));
 }
 
 function changeUrl() {
@@ -57,7 +62,7 @@ function loadFromLocalStorage(args) {
   var color    = args.color,
       canvas   = args.canvas;
 
-  var colorsStrings = localStorage.getItem("colors");
+  var colorsStrings = localStorage.getItem(localStorageString);
   if ((colorsStrings != null) && (colorsStrings.length > 0)) {
     var colors = JSON.parse(colorsStrings);
     if (colors.length > 0) {
@@ -385,8 +390,11 @@ $canvas.onmousewheel = function(ev) {
 
 var started = (savedColors.length > 0);
 
+var pinching = false,
+    currentPinch = undefined;
+
 Hammer($canvas).on("drag", function(ev) {
-  if (!savedColorsFull() || !pinching) {
+  if (!savedColorsFull() && !pinching) {
     var pageX = ev.gesture.center.pageX,
         pageY = ev.gesture.center.pageY,
         radius = canvas.getRadius(pageX, pageY);
@@ -396,9 +404,6 @@ Hammer($canvas).on("drag", function(ev) {
     color.hsvToRgb();
   }
 });
-
-var pinching = false,
-    currentPinch = undefined;
 
 Hammer($canvas).on("pinch", function(ev) {
   ev.gesture.preventDefault();
@@ -465,7 +470,6 @@ Hammer($canvas).on("touch", function(ev) {
 
 Hammer($canvas).on("release", function(ev) {
   stopAnimation();
-
   pinching = false;
 });
 
