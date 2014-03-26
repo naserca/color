@@ -480,4 +480,12 @@ Hammer($body).on("touch", function(ev) {
 // resize events
 
 window.addEventListener('resize', function() { canvas.resize(); });
-window.addEventListener('orientationchange', function() { canvas.resize(); });
+
+windowOrientation = undefined;
+window.addEventListener('orientationchange', function() {
+  var orientation = window.orientation;
+  if (orientation !== windowOrientation) {
+    canvas.resize();
+    windowOrientation = orientation;
+  }
+});
