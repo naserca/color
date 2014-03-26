@@ -4,6 +4,11 @@ localStorageString = "naserca-colors-v-0-0-1";
 function showOrHideInstructions() {
   $instructions.style.display = ((savedColorsEmpty()) ? "block" : "none");
 }
+
+function showOrHideOverlay(windowOrientation) {
+  $overlay.style.display = ((windowOrientation == 90 || windowOrientation == -90) ? "block" : "none");
+}
+
 function animate(canvas) {
   canvas.draw(color);
 
@@ -345,6 +350,7 @@ var $body, $canvas;
 $body = document.body;
 $canvas = document.getElementById('canvas');
 $instructions = document.getElementById('instructions');
+$overlay = document.getElementById('overlay');
 
 var animationIds = [];
 
@@ -492,6 +498,7 @@ windowOrientation = undefined;
 window.addEventListener('orientationchange', function() {
   var orientation = window.orientation;
   if (orientation !== windowOrientation) {
+    showOrHideOverlay(orientation)
     canvas.resize();
     windowOrientation = orientation;
   }
