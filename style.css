@@ -6,6 +6,21 @@ body {
   color: white;
 }
 
+#instructions {
+  position: fixed;
+  text-align: right;
+  margin: 1em;
+  bottom: 0;
+  right: 0;
+}
+.no-touch .touch {
+  display: none;
+}
+
+.touch .no-touch {
+  display: none;
+}
+
 a {
   cursor: pointer;
 }

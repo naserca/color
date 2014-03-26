@@ -1,6 +1,9 @@
 window.savedColors = [];
 localStorageString = "naserca-colors-v-0-0-1";
 
+function showOrHideInstructions() {
+  $instructions.style.display = ((savedColorsEmpty()) ? "block" : "none");
+}
 function animate(canvas) {
   canvas.draw(color);
 
@@ -281,6 +284,7 @@ Color.prototype.saveSelf = function() {
   this.hexToRgb();
   savedColors.push(this);
   saveToLocalStorage();
+  showOrHideInstructions();
   changeUrl();
 }
 
@@ -297,6 +301,7 @@ Color.prototype.deleteSelf = function($div) {
       break;
     }
   }
+  showOrHideInstructions();
 }
 
 // pinch
@@ -339,6 +344,7 @@ var $body, $canvas;
 
 $body = document.body;
 $canvas = document.getElementById('canvas');
+$instructions = document.getElementById('instructions');
 
 var animationIds = [];
 
@@ -367,6 +373,7 @@ if (savedColors.length > 0) {
   canvas.draw();
 }
 
+showOrHideInstructions();
 canvas.resize();
 
 var timeoutId;
