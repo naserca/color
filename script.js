@@ -345,7 +345,7 @@ Pinch.prototype.setMiddles = function(middleX, middleY) {
 
 // runner
 
-var $body, $canvas;
+var $body, $canvas, $instructions, $overlay;
 
 $body = document.body;
 $canvas = document.getElementById('canvas');
@@ -380,6 +380,7 @@ if (savedColors.length > 0) {
 }
 
 showOrHideInstructions();
+showOrHideOverlay(window.orientation);
 canvas.resize();
 
 var timeoutId;
@@ -494,7 +495,7 @@ Hammer($body).on("touch", function(ev) {
 
 window.addEventListener('resize', function() { canvas.resize(); });
 
-windowOrientation = undefined;
+windowOrientation = 0;
 window.addEventListener('orientationchange', function() {
   var orientation = window.orientation;
   if (orientation !== windowOrientation) {
