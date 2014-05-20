@@ -1,5 +1,5 @@
 window.savedColors = [];
-localStorageString = "naserca-colors-v-0-0-1";
+localStorageString = "naserca-colors-v-0-0-2";
 
 function showOrHideInstructions() {
   $instructions.style.display = ((savedColorsEmpty()) ? "block" : "none");
